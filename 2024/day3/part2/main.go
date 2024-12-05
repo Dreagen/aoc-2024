@@ -15,6 +15,11 @@ const (
 	closeBracket = ')'
 	comma        = ','
 	noMatch      = 'x'
+	d            = 'd'
+	o            = 'o'
+	n            = 'n'
+	singleQuote  = '\''
+	t            = 't'
 )
 
 func main() {
@@ -22,7 +27,7 @@ func main() {
 
 	startTime := time.Now()
 
-	runes, err := readFile("input.txt")
+	runes, err := readFile("../input.txt")
 	if err != nil {
 		fmt.Printf("Error reading input: %s", err.Error())
 		os.Exit(1)
@@ -45,6 +50,9 @@ func findMatch(runes *[]rune) int {
 	firstNumberMatched := false
 	numbersMatchedInARow := 0
 
+	do := true
+	isEnabled := true
+
 	for _, currentRune := range *runes {
 		if currentRune == m {
 			if inMatch {
@@ -58,22 +66,22 @@ func findMatch(runes *[]rune) int {
 			continue
 		}
 
-		if currentRune == u && inMatch && previousMatch == m {
+		if isEnabled && currentRune == u && inMatch && previousMatch == m {
 			previousMatch = u
 			continue
 		}
 
-		if currentRune == l && inMatch && previousMatch == u {
+		if isEnabled && currentRune == l && inMatch && previousMatch == u {
 			previousMatch = l
 			continue
 		}
 
-		if currentRune == openBracket && inMatch && previousMatch == l {
+		if isEnabled && currentRune == openBracket && inMatch && previousMatch == l {
 			previousMatch = openBracket
 			continue
 		}
 
-		if isInt(currentRune) && numbersMatchedInARow < 3 && inMatch && (previousMatch == openBracket || isInt(previousMatch)) {
+		if isEnabled && isInt(currentRune) && numbersMatchedInARow < 3 && inMatch && (previousMatch == openBracket || isInt(previousMatch)) {
 			previousMatch = currentRune
 			if firstNumberMatched == false {
 				firstNumber = (firstNumber * 10) + runeToInt(currentRune)
@@ -86,15 +94,62 @@ func findMatch(runes *[]rune) int {
 			continue
 		}
 
-		if currentRune == comma && inMatch && isInt(previousMatch) {
+		if isEnabled && currentRune == comma && inMatch && isInt(previousMatch) {
 			numbersMatchedInARow = 0
 			firstNumberMatched = true
 			continue
 		}
 
-		if currentRune == closeBracket && inMatch && isInt(previousMatch) {
+		if isEnabled && currentRune == closeBracket && inMatch && isInt(previousMatch) {
 			fmt.Printf("%d * %d = %d\n", firstNumber, secondNumber, firstNumber*secondNumber)
 			total += firstNumber * secondNumber
+		}
+
+		if currentRune == d {
+			fmt.Println("matched d")
+			previousMatch = d
+			inMatch = false
+			continue
+		}
+
+		if currentRune == o && previousMatch == d {
+			fmt.Println("matched o")
+			previousMatch = o
+			do = true
+			continue
+		}
+
+		if currentRune == n && previousMatch == o {
+			fmt.Println("matched n")
+			previousMatch = n
+			do = false
+			continue
+		}
+
+		if currentRune == singleQuote && previousMatch == n {
+			fmt.Println("matched '")
+			previousMatch = singleQuote
+			continue
+		}
+
+		if currentRune == t && previousMatch == singleQuote {
+			fmt.Println("matched t")
+			previousMatch = t
+			continue
+		}
+
+		if currentRune == openBracket && previousMatch == t || previousMatch == o {
+			fmt.Println("matched (")
+			previousMatch = openBracket
+			continue
+		}
+
+		if currentRune == closeBracket && previousMatch == openBracket {
+			fmt.Println("matched )")
+			previousMatch = closeBracket
+			isEnabled = do
+			fmt.Printf("conidition matched, isEnabled: %t\n", isEnabled)
+			continue
 		}
 
 		numbersMatchedInARow = 0
