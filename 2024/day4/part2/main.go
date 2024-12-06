@@ -1,4 +1,4 @@
-// https://adventofcode.com/2024/day/4#part1
+// https://adventofcode.com/2024/day/4#part2
 package main
 
 import (
@@ -15,8 +15,8 @@ var maxGridHeight int
 var maxGridWidth int
 
 func main() {
-	// runeGrid, err := readFile("../test.txt")
-	runeGrid, err := readFile("../input.txt")
+	runeGrid, err := readFile("../test.txt")
+	// runeGrid, err := readFile("../input.txt")
 	if err != nil {
 		fmt.Printf("Error reading input: %s", err.Error())
 		os.Exit(1)
