@@ -5,18 +5,24 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"time"
 )
 
 const (
 	x = 'X'
+	m = 'M'
+	a = 'A'
+	s = 'S'
 )
 
 var maxGridHeight int
 var maxGridWidth int
 
 func main() {
-	runeGrid, err := readFile("../test.txt")
-	// runeGrid, err := readFile("../input.txt")
+	startTime := time.Now()
+
+	// runeGrid, err := readFile("../test.txt")
+	runeGrid, err := readFile("../input.txt")
 	if err != nil {
 		fmt.Printf("Error reading input: %s", err.Error())
 		os.Exit(1)
@@ -25,18 +31,10 @@ func main() {
 	maxGridHeight = len(*runeGrid)
 	maxGridWidth = len((*runeGrid)[0])
 
-	for _, runeList := range *runeGrid {
-		for _, rune := range runeList {
-			fmt.Print(string(rune))
-		}
-		fmt.Println()
-	}
-
-	fmt.Printf("max height: %d, max width: %d\n", maxGridHeight, maxGridWidth)
-
 	total := findXmasCount(runeGrid)
 
 	fmt.Println()
+	fmt.Printf("Execution time: %d microseconds\n", time.Since(startTime).Microseconds())
 	fmt.Printf("Total xmas: %d\n", total)
 }
 
@@ -53,68 +51,64 @@ func findXmasCount(runeGrid *[][]rune) int {
 
 func startSearch(yIndex, xIndex int, runeGrid *[][]rune) int {
 	currentRune := (*runeGrid)[yIndex][xIndex]
-	if currentRune != 'X' {
+	if currentRune != 'A' {
 		return 0
 	}
 
-	// fmt.Println("Found X")
-
-	return searchAround(yIndex, xIndex, runeGrid, 'M', nil)
+	return searchAround(yIndex, xIndex, runeGrid)
 }
 
-func searchAround(yIndex, xIndex int, runeGrid *[][]rune, searchValue rune, alreadyMovingInDirection *int) int {
+func searchAround(yIndex, xIndex int, runeGrid *[][]rune) int {
 	positions := make([]Coordinate, 8)
 
-	left := Coordinate{yIndex, xIndex - 1}
 	topLeft := Coordinate{yIndex - 1, xIndex - 1}
-	top := Coordinate{yIndex - 1, xIndex}
 	topRight := Coordinate{yIndex - 1, xIndex + 1}
-	right := Coordinate{yIndex, xIndex + 1}
 	bottomRight := Coordinate{yIndex + 1, xIndex + 1}
-	bottom := Coordinate{yIndex + 1, xIndex}
 	bottomLeft := Coordinate{yIndex + 1, xIndex - 1}
 
-	positions[0] = left
-	positions[1] = topLeft
-	positions[2] = top
-	positions[3] = topRight
-	positions[4] = right
-	positions[5] = bottomRight
-	positions[6] = bottom
-	positions[7] = bottomLeft
-
-	var positionsToSearch []Coordinate
-	if alreadyMovingInDirection != nil {
-		positionsToSearch = append(positionsToSearch, positions[*alreadyMovingInDirection])
-	} else {
-		positionsToSearch = positions
+	if inGrid(topLeft) == false || inGrid(topRight) == false || inGrid(bottomRight) == false || inGrid(bottomLeft) == false {
+		return 0
 	}
 
-	total := 0
-	for i, position := range positionsToSearch {
-		var direction int
-		if alreadyMovingInDirection != nil {
-			direction = *alreadyMovingInDirection
-		} else {
-			direction = i
-		}
+	positions[0] = topLeft
+	positions[1] = topRight
+	positions[2] = bottomRight
+	positions[3] = bottomLeft
 
-		if inGrid(position) {
-			charAtPosition := (*runeGrid)[position.X][position.Y]
-			if charAtPosition == searchValue {
-				// fmt.Printf("Found %c in position %s\n", charAtPosition, printDirection(direction))
-				if searchValue == 'S' {
-					fmt.Printf("Found XMAS following direction %s\n", printDirection(direction))
-					total++
-					continue
-				}
+	charAtTopLeft := (*runeGrid)[positions[0].X][positions[0].Y]
+	charAtTopRight := (*runeGrid)[positions[1].X][positions[1].Y]
+	charAtBottomRight := (*runeGrid)[positions[2].X][positions[2].Y]
+	charAtBottomLeft := (*runeGrid)[positions[3].X][positions[3].Y]
 
-				total += searchAround(position.X, position.Y, runeGrid, *getNextSearch(charAtPosition), &direction)
-			}
-		}
+	if charAtTopLeft != m && charAtTopLeft != s {
+		return 0
 	}
 
-	return total
+	if charAtTopRight != m && charAtTopRight != s {
+		return 0
+	}
+
+	if isCorrectOppositeCorner(charAtTopLeft, charAtBottomRight) == false {
+		return 0
+	}
+
+	if isCorrectOppositeCorner(charAtTopRight, charAtBottomLeft) == false {
+		return 0
+	}
+
+	return 1
+}
+
+func isCorrectOppositeCorner(r, r1 rune) bool {
+	switch r {
+	case m:
+		return r1 == s
+	case s:
+		return r1 == m
+	}
+
+	fmt.Printf("unexpected char when checking opposite corner: %c\n", r)
+	return false
 }
 
 func printDirection(i int) string {
@@ -169,6 +163,15 @@ func getNextSearch(r rune) *rune {
 type Coordinate struct {
 	X int
 	Y int
+}
+
+func printGrid(runeGrid *[][]rune) {
+	for _, runeList := range *runeGrid {
+		for _, rune := range runeList {
+			fmt.Print(string(rune))
+		}
+		fmt.Println()
+	}
 }
 
 func readFile(fileName string) (*[][]rune, error) {
