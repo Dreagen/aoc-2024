@@ -42,23 +42,19 @@ func findXmasCount(runeGrid *[][]rune) int {
 	total := 0
 	for gridIndex, runeList := range *runeGrid {
 		for lineIndex := range runeList {
-			total += startSearch(gridIndex, lineIndex, runeGrid)
+			total += searchAround(gridIndex, lineIndex, runeGrid)
 		}
 	}
 
 	return total
 }
 
-func startSearch(yIndex, xIndex int, runeGrid *[][]rune) int {
+func searchAround(yIndex, xIndex int, runeGrid *[][]rune) int {
 	currentRune := (*runeGrid)[yIndex][xIndex]
 	if currentRune != 'A' {
 		return 0
 	}
 
-	return searchAround(yIndex, xIndex, runeGrid)
-}
-
-func searchAround(yIndex, xIndex int, runeGrid *[][]rune) int {
 	positions := make([]Coordinate, 8)
 
 	topLeft := Coordinate{yIndex - 1, xIndex - 1}
@@ -111,53 +107,9 @@ func isCorrectOppositeCorner(r, r1 rune) bool {
 	return false
 }
 
-func printDirection(i int) string {
-	switch i {
-	case 0:
-		return "left"
-	case 1:
-		return "up left"
-	case 2:
-		return "up"
-	case 3:
-		return "up right"
-	case 4:
-		return "right"
-	case 5:
-		return "down right"
-	case 6:
-		return "down"
-	case 7:
-		return "down left"
-	}
-
-	return "invalid direction"
-}
-
 func inGrid(coord Coordinate) bool {
 	inGrid := coord.X >= 0 && coord.X < maxGridHeight && coord.Y >= 0 && coord.Y < maxGridWidth
 	return inGrid
-}
-
-func getNextSearch(r rune) *rune {
-	switch r {
-	case 'X':
-		m := 'M'
-		return &m
-	case 'M':
-		a := 'A'
-		return &a
-	case 'A':
-		s := 'S'
-		return &s
-	case 'S':
-		m := 'M'
-		return &m
-	}
-
-	fmt.Printf("couldn't get next search for character: %c\n", r)
-
-	return nil
 }
 
 type Coordinate struct {

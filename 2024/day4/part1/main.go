@@ -9,6 +9,7 @@ import (
 
 const (
 	x = 'X'
+	m = 'M'
 )
 
 var maxGridHeight int
@@ -24,15 +25,6 @@ func main() {
 
 	maxGridHeight = len(*runeGrid)
 	maxGridWidth = len((*runeGrid)[0])
-
-	for _, runeList := range *runeGrid {
-		for _, rune := range runeList {
-			fmt.Print(string(rune))
-		}
-		fmt.Println()
-	}
-
-	fmt.Printf("max height: %d, max width: %d\n", maxGridHeight, maxGridWidth)
 
 	total := findXmasCount(runeGrid)
 
@@ -56,8 +48,6 @@ func startSearch(yIndex, xIndex int, runeGrid *[][]rune) int {
 	if currentRune != 'X' {
 		return 0
 	}
-
-	// fmt.Println("Found X")
 
 	return searchAround(yIndex, xIndex, runeGrid, 'M', nil)
 }
@@ -102,9 +92,7 @@ func searchAround(yIndex, xIndex int, runeGrid *[][]rune, searchValue rune, alre
 		if inGrid(position) {
 			charAtPosition := (*runeGrid)[position.X][position.Y]
 			if charAtPosition == searchValue {
-				// fmt.Printf("Found %c in position %s\n", charAtPosition, printDirection(direction))
 				if searchValue == 'S' {
-					fmt.Printf("Found XMAS following direction %s\n", printDirection(direction))
 					total++
 					continue
 				}
@@ -115,29 +103,6 @@ func searchAround(yIndex, xIndex int, runeGrid *[][]rune, searchValue rune, alre
 	}
 
 	return total
-}
-
-func printDirection(i int) string {
-	switch i {
-	case 0:
-		return "left"
-	case 1:
-		return "up left"
-	case 2:
-		return "up"
-	case 3:
-		return "up right"
-	case 4:
-		return "right"
-	case 5:
-		return "down right"
-	case 6:
-		return "down"
-	case 7:
-		return "down left"
-	}
-
-	return "invalid direction"
 }
 
 func inGrid(coord Coordinate) bool {
@@ -169,6 +134,15 @@ func getNextSearch(r rune) *rune {
 type Coordinate struct {
 	X int
 	Y int
+}
+
+func printGrid(runeGrid *[][]rune) {
+	for _, runeList := range *runeGrid {
+		for _, rune := range runeList {
+			fmt.Print(string(rune))
+		}
+		fmt.Println()
+	}
 }
 
 func readFile(fileName string) (*[][]rune, error) {
