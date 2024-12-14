@@ -17,7 +17,11 @@ const (
 var direction = Up
 var total = 0
 var visit = 0
+var verticalBlockers map[int][]int
+var horizontalBlockers map[int][]int
+var blockers = []Coordinate{}
 var potentialLoop = []Coordinate{}
+var blockersCausingInfiniteLoop = []Coordinate{}
 
 func main() {
 	startTime := time.Now()
@@ -28,23 +32,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	makeBlockerMaps(grid, blockers)
+
 	guardPosition := findGuardPosition(grid)
-	walk(*guardPosition, direction, grid)
+	loopBlockers := []Coordinate{}
+	walk(*guardPosition, direction, grid, &loopBlockers)
 
 	endTime := time.Since(startTime)
 
 	printGrid(grid)
 
+	fmt.Printf("blocks causing infinte loop: %v\n", blockersCausingInfiniteLoop)
+
 	fmt.Printf("total spaces visited: %d\n\n", total)
 	fmt.Printf("executed in %d microseconds\n", endTime.Microseconds())
-
-	fmt.Printf("potential loop: %d\n", potentialLoop)
 }
 
-func walk(guardPosition Coordinate, direction int, grid *[][]rune) {
-	if (*grid)[guardPosition.Y][guardPosition.X] == 'X' {
-		potentialLoop = append(potentialLoop, getNextPosition(guardPosition, direction))
-	}
+func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers *[]Coordinate) {
 	if (*grid)[guardPosition.Y][guardPosition.X] != 'X' {
 		total++
 	}
@@ -56,11 +60,101 @@ func walk(guardPosition Coordinate, direction int, grid *[][]rune) {
 	}
 
 	if isBlocked(nextPosition, grid) == false {
-		walk(nextPosition, direction, grid)
+		if isStuckInLoop(direction, nextPosition, &[]Coordinate{}) {
+			blockersCausingInfiniteLoop = append(blockersCausingInfiniteLoop, nextPosition)
+		}
+
+		walk(nextPosition, direction, grid, loopBlockers)
 	} else {
 		direction = getNextDirection(direction)
 		nextPosition = getNextPosition(guardPosition, direction)
-		walk(nextPosition, direction, grid)
+		walk(nextPosition, direction, grid, loopBlockers)
+	}
+}
+
+func isStuckInLoop(currentDirection int, blockerCoord Coordinate, loopBlockers *[]Coordinate) bool {
+	for _, blocker := range *loopBlockers {
+		if blocker == blockerCoord {
+			return true
+		}
+	}
+	*loopBlockers = append(*loopBlockers, blockerCoord)
+
+	fmt.Printf("blocker coord: %v\n", blockerCoord)
+	newDirection := getNextDirection(currentDirection)
+	switch newDirection {
+	case Up:
+		fmt.Println("Case Up")
+		currentPosition := blockerCoord.X + 1
+		rowToCheck := verticalBlockers[currentPosition]
+		for _, blockerPosition := range rowToCheck {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, currentPosition)
+			if blockerPosition < currentPosition {
+				innerBlock := Coordinate{X: blockerCoord.X + 1, Y: blockerPosition}
+				*loopBlockers = append(*loopBlockers, innerBlock)
+				fmt.Printf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, currentPosition)
+				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+			}
+		}
+
+		return false
+	case Down:
+		fmt.Println("Case Down")
+		currentPosition := blockerCoord.X - 1
+		rowToCheck := verticalBlockers[currentPosition]
+		for _, blockerPosition := range rowToCheck {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, currentPosition)
+			if blockerPosition > currentPosition {
+				innerBlock := Coordinate{X: blockerCoord.X - 1, Y: blockerPosition}
+				*loopBlockers = append(*loopBlockers, innerBlock)
+				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, currentPosition)
+				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+			}
+		}
+
+		return false
+	case Right:
+		fmt.Println("Case Right")
+		currentPosition := blockerCoord.Y + 1
+		rowToCheck := horizontalBlockers[currentPosition]
+		for _, blockerPosition := range rowToCheck {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, currentPosition)
+			if blockerPosition > currentPosition {
+				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y + 1}
+				fmt.Printf("inner block: %d\n", innerBlock)
+				// TODO: I can see inner block is what I expect here, but next print of blocker coord is not expected
+				*loopBlockers = append(*loopBlockers, innerBlock)
+				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, currentPosition)
+				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+			}
+		}
+
+		return false
+	case Left:
+		fmt.Println("Case Left")
+		currentPosition := blockerCoord.Y - 1
+		rowToCheck := horizontalBlockers[currentPosition]
+		for _, blockerPosition := range rowToCheck {
+			if blockerPosition < currentPosition {
+				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y - 1}
+				*loopBlockers = append(*loopBlockers, innerBlock)
+				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+			}
+		}
+
+		return false
+	}
+
+	panic("unknown direction")
+}
+
+func makeBlockerMaps(grid *[][]rune, blockers []Coordinate) {
+	verticalBlockers = make(map[int][]int, len((*grid)[0]))
+	horizontalBlockers = make(map[int][]int, len(*grid))
+
+	for _, blocker := range blockers {
+		verticalBlockers[blocker.X] = append(verticalBlockers[blocker.X], blocker.Y)
+		horizontalBlockers[blocker.Y] = append(horizontalBlockers[blocker.Y], blocker.X)
 	}
 }
 
@@ -163,9 +257,16 @@ func readFile(fileName string) (*[][]rune, error) {
 
 	scanner := bufio.NewScanner(file)
 
+	i := 0
 	for scanner.Scan() {
 		runesInLine = []rune(scanner.Text())
+		for j, r := range runesInLine {
+			if r == '#' {
+				blockers = append(blockers, Coordinate{X: j, Y: i})
+			}
+		}
 		runeGrid = append(runeGrid, runesInLine)
+		i++
 	}
 
 	if err := scanner.Err(); err != nil {
