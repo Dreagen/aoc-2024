@@ -60,7 +60,7 @@ func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers 
 	}
 
 	if isBlocked(nextPosition, grid) == false {
-		if isStuckInLoop(direction, nextPosition, &[]Coordinate{}) {
+		if isStuckInLoop(direction, nextPosition, nextPosition, &[]Coordinate{}) {
 			blockersCausingInfiniteLoop = append(blockersCausingInfiniteLoop, nextPosition)
 		}
 
@@ -72,76 +72,106 @@ func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers 
 	}
 }
 
-func isStuckInLoop(currentDirection int, blockerCoord Coordinate, loopBlockers *[]Coordinate) bool {
+func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coordinate, loopBlockers *[]Coordinate) bool {
+	fmt.Printf("blocker coord: %v\n", blockerCoord)
+
+	newDirection := getNextDirection(currentDirection)
+
+	if blockerCoord != initialBlockerCoord {
+		switch newDirection {
+		case Up:
+			if blockerCoord.X+1 == initialBlockerCoord.X && blockerCoord.Y > initialBlockerCoord.Y {
+				fmt.Println("Hit inital blocker, found inifinte loop")
+				return true
+			}
+		case Down:
+			if blockerCoord.X-1 == initialBlockerCoord.X && blockerCoord.Y < initialBlockerCoord.Y {
+				fmt.Println("Hit inital blocker, found inifinte loop")
+				return true
+			}
+		case Right:
+			if blockerCoord.Y+1 == initialBlockerCoord.Y && blockerCoord.X < initialBlockerCoord.X {
+				fmt.Println("Hit inital blocker, found inifinte loop")
+				return true
+			}
+		case Left:
+			if blockerCoord.Y-1 == initialBlockerCoord.Y && blockerCoord.X > initialBlockerCoord.X {
+				fmt.Println("Hit inital blocker, found inifinte loop")
+				return true
+			}
+		}
+	}
+
 	for _, blocker := range *loopBlockers {
 		if blocker == blockerCoord {
+			fmt.Printf("Found blocker in loop blockers, blocker: %v, blocker in list: %v\n", blockerCoord, blocker)
 			return true
 		}
 	}
 	*loopBlockers = append(*loopBlockers, blockerCoord)
 
-	fmt.Printf("blocker coord: %v\n", blockerCoord)
-	newDirection := getNextDirection(currentDirection)
 	switch newDirection {
 	case Up:
 		fmt.Println("Case Up")
 		currentPosition := blockerCoord.X + 1
 		rowToCheck := verticalBlockers[currentPosition]
 		for _, blockerPosition := range rowToCheck {
-			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, currentPosition)
-			if blockerPosition < currentPosition {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, blockerCoord.Y)
+			if blockerPosition < blockerCoord.Y {
 				innerBlock := Coordinate{X: blockerCoord.X + 1, Y: blockerPosition}
-				*loopBlockers = append(*loopBlockers, innerBlock)
-				fmt.Printf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, currentPosition)
-				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+				fmt.Printf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, blockerCoord.Y)
+				return isStuckInLoop(newDirection, blockerCoord, innerBlock, loopBlockers)
 			}
 		}
 
+		fmt.Println("returning false")
 		return false
 	case Down:
 		fmt.Println("Case Down")
 		currentPosition := blockerCoord.X - 1
 		rowToCheck := verticalBlockers[currentPosition]
 		for _, blockerPosition := range rowToCheck {
-			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, currentPosition)
-			if blockerPosition > currentPosition {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, blockerCoord.Y)
+			if blockerPosition > blockerCoord.Y {
 				innerBlock := Coordinate{X: blockerCoord.X - 1, Y: blockerPosition}
-				*loopBlockers = append(*loopBlockers, innerBlock)
-				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, currentPosition)
-				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, blockerCoord.Y)
+				return isStuckInLoop(newDirection, blockerCoord, innerBlock, loopBlockers)
 			}
 		}
 
+		fmt.Println("returning false")
 		return false
 	case Right:
 		fmt.Println("Case Right")
 		currentPosition := blockerCoord.Y + 1
 		rowToCheck := horizontalBlockers[currentPosition]
 		for _, blockerPosition := range rowToCheck {
-			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, currentPosition)
-			if blockerPosition > currentPosition {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, blockerCoord.X)
+			if blockerPosition > blockerCoord.X {
 				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y + 1}
 				fmt.Printf("inner block: %d\n", innerBlock)
-				// TODO: I can see inner block is what I expect here, but next print of blocker coord is not expected
-				*loopBlockers = append(*loopBlockers, innerBlock)
-				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, currentPosition)
-				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+				fmt.Printf("blocker position: %d, was larger than current position: %d\n", blockerPosition, blockerCoord.X)
+				return isStuckInLoop(newDirection, blockerCoord, innerBlock, loopBlockers)
 			}
 		}
 
+		fmt.Println("returning false")
 		return false
 	case Left:
 		fmt.Println("Case Left")
 		currentPosition := blockerCoord.Y - 1
 		rowToCheck := horizontalBlockers[currentPosition]
 		for _, blockerPosition := range rowToCheck {
-			if blockerPosition < currentPosition {
+			fmt.Printf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, blockerCoord.X)
+			if blockerPosition < blockerCoord.X {
 				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y - 1}
-				*loopBlockers = append(*loopBlockers, innerBlock)
-				return isStuckInLoop(newDirection, innerBlock, loopBlockers)
+				fmt.Printf("inner block: %d\n", innerBlock)
+				fmt.Printf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, blockerCoord.X)
+				return isStuckInLoop(newDirection, blockerCoord, innerBlock, loopBlockers)
 			}
 		}
 
+		fmt.Println("returning false")
 		return false
 	}
 
