@@ -56,6 +56,18 @@ func main() {
 	fmt.Printf("blocks causing infinte loop: %v\n", blockersCausingInfiniteLoop)
 	fmt.Printf("blocks count causing infinte loop: %v\n", len(blockersCausingInfiniteLoop))
 
+	file, err := os.Create("mine.txt")
+	if err != nil {
+		fmt.Printf("Error creating file: %s", err.Error())
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	for _, blocker := range blockersCausingInfiniteLoop {
+		fmt.Fprintf(file, "%v ", blocker)
+	}
+	fmt.Fprintln(file) // Add a newline at the end
+
 	fmt.Printf("total spaces visited: %d\n\n", total)
 	fmt.Printf("executed in %d milliseconds\n", endTime.Milliseconds())
 }
@@ -73,8 +85,8 @@ func walk(guardPosition CoordinateWithDirection, direction int, grid *[][]rune, 
 	(*grid)[guardPosition.Y][guardPosition.X] = 'X'
 
 	c := Coordinate{
-		X: 4,
-		Y: 1,
+		X: 14,
+		Y: 111,
 	}
 
 	nextPosition := getNextPosition(guardPosition, direction)

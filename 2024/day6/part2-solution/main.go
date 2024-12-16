@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	aoc "github.com/shraddhaag/aoc/library"
@@ -29,6 +30,18 @@ func main() {
 		return points[i].X < points[j].X
 	})
 	fmt.Println("points: ", points)
+
+	file, err := os.Create("theirs.txt")
+	if err != nil {
+		fmt.Printf("Error creating file: %s", err.Error())
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	for _, blocker := range points {
+		fmt.Fprintf(file, "%v ", blocker)
+	}
+	fmt.Fprintln(file) // Add a newline at the end
 }
 
 func findStartingPoint(input [][]string) point {
