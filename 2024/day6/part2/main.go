@@ -6,8 +6,6 @@ import (
 	"os"
 	"sort"
 	"time"
-
-	aoc "github.com/shraddhaag/aoc/library"
 )
 
 const (
@@ -25,7 +23,7 @@ var verticalBlockers map[int][]int
 var horizontalBlockers map[int][]int
 var blockers = []Coordinate{}
 var potentialLoop = []Coordinate{}
-var blockersCausingInfiniteLoop = []Coordinate{}
+var blockersCausingInfiniteLoop = []CoordinateWithDirection{}
 var checkedBlockers = []Coordinate{}
 
 var points = []Coordinate{}
@@ -42,7 +40,7 @@ func main() {
 	makeBlockerMaps(grid, blockers)
 
 	guardPosition := findGuardPosition(grid)
-	loopBlockers := []Coordinate{}
+	loopBlockers := []CoordinateWithDirection{}
 	nextPosition := getNextPosition(*guardPosition, direction)
 	walk(nextPosition, direction, grid, &loopBlockers)
 
@@ -56,19 +54,15 @@ func main() {
 
 	fmt.Printf("total spaces visited: %d\n\n", total)
 	fmt.Printf("executed in %d microseconds\n", endTime.Microseconds())
-
-	other()
-
-	fmt.Println("Points: ", points)
 }
 
-func printInfiniteBlockers(grid *[][]rune, blockers []Coordinate) {
+func printInfiniteBlockers(grid *[][]rune, blockers []CoordinateWithDirection) {
 	for _, c := range blockers {
 		(*grid)[c.Y][c.X] = 'O'
 	}
 }
 
-func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers *[]Coordinate) {
+func walk(guardPosition CoordinateWithDirection, direction int, grid *[][]rune, loopBlockers *[]CoordinateWithDirection) {
 	if (*grid)[guardPosition.Y][guardPosition.X] != 'X' {
 		total++
 	}
@@ -85,13 +79,13 @@ func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers 
 			Y: 3,
 		}
 
-		if nextPosition == c {
+		if nextPosition.Coordinate == c {
 			shouldLog = true
 		}
 		logf("blockers: %v\n", blockers)
 
-		if (*grid)[nextPosition.Y][nextPosition.X] != 'X' && contains(checkedBlockers, nextPosition) == false {
-			if isStuckInLoop(direction, nextPosition, nextPosition, &[]Coordinate{}) {
+		if (*grid)[nextPosition.Y][nextPosition.X] != 'X' && contains(checkedBlockers, nextPosition.Coordinate) == false {
+			if isStuckInLoop(direction, nextPosition, nextPosition, &[]CoordinateWithDirection{}) {
 				blockersCausingInfiniteLoop = append(blockersCausingInfiniteLoop, nextPosition)
 			}
 		}
@@ -105,12 +99,9 @@ func walk(guardPosition Coordinate, direction int, grid *[][]rune, loopBlockers 
 	}
 }
 
-func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coordinate, loopBlockers *[]Coordinate) bool {
+func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord CoordinateWithDirection, loopBlockers *[]CoordinateWithDirection) bool {
 	logf("blocker coord: %v\n", blockerCoord)
 
-	if initialBlockerCoord == blockerCoord {
-		checkedBlockers = append(checkedBlockers, blockerCoord)
-	}
 	newDirection := getNextDirection(currentDirection)
 
 	if blockerCoord != initialBlockerCoord {
@@ -126,9 +117,6 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 				return true
 			}
 		case Right:
-			logln("Checking for initial blocker right")
-			logf("Intial blocker: %v\n", initialBlockerCoord)
-			logf("blocker coord: %v\n", blockerCoord)
 			if blockerCoord.Y+1 == initialBlockerCoord.Y && blockerCoord.X < initialBlockerCoord.X {
 				logln("Hit inital blocker, found inifinte loop")
 				return true
@@ -164,7 +152,7 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 		for _, blockerPosition := range sorted {
 			logf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, blockerCoord.Y)
 			if blockerPosition < blockerCoord.Y {
-				innerBlock := Coordinate{X: blockerCoord.X + 1, Y: blockerPosition}
+				innerBlock := CoordinateWithDirection{Coordinate{X: blockerCoord.X + 1, Y: blockerPosition}, Up}
 				logf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, blockerCoord.Y)
 				return isStuckInLoop(newDirection, initialBlockerCoord, innerBlock, loopBlockers)
 			}
@@ -179,7 +167,7 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 		for _, blockerPosition := range rowToCheck {
 			logf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, blockerCoord.Y)
 			if blockerPosition > blockerCoord.Y {
-				innerBlock := Coordinate{X: blockerCoord.X - 1, Y: blockerPosition}
+				innerBlock := CoordinateWithDirection{Coordinate{X: blockerCoord.X - 1, Y: blockerPosition}, Down}
 				logf("blocker position: %d, was larger than current position: %d\n", blockerPosition, blockerCoord.Y)
 				return isStuckInLoop(newDirection, initialBlockerCoord, innerBlock, loopBlockers)
 			}
@@ -194,7 +182,7 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 		for _, blockerPosition := range rowToCheck {
 			logf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be larger\n", blockerPosition, blockerCoord.X)
 			if blockerPosition > blockerCoord.X {
-				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y + 1}
+				innerBlock := CoordinateWithDirection{Coordinate{X: blockerPosition, Y: blockerCoord.Y + 1}, Right}
 				logf("inner block: %d\n", innerBlock)
 				logf("blocker position: %d, was larger than current position: %d\n", blockerPosition, blockerCoord.X)
 				return isStuckInLoop(newDirection, initialBlockerCoord, innerBlock, loopBlockers)
@@ -217,7 +205,7 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 		for _, blockerPosition := range sorted {
 			logf("Checking blocker position: %d agaisnt currentPosition: %d - needs to be smaller\n", blockerPosition, blockerCoord.X)
 			if blockerPosition < blockerCoord.X {
-				innerBlock := Coordinate{X: blockerPosition, Y: blockerCoord.Y - 1}
+				innerBlock := CoordinateWithDirection{Coordinate{X: blockerPosition, Y: blockerCoord.Y - 1}, Left}
 				logf("inner block: %d\n", innerBlock)
 				logf("blocker position: %d, was smaller than current position: %d\n", blockerPosition, blockerCoord.X)
 				return isStuckInLoop(newDirection, initialBlockerCoord, innerBlock, loopBlockers)
@@ -252,31 +240,43 @@ func makeBlockerMaps(grid *[][]rune, blockers []Coordinate) {
 		})
 	}
 
-	fmt.Printf("Vertical blockers: %v\n", verticalBlockers)
-	fmt.Printf("Horizontal blockers: %v\n", horizontalBlockers)
+	// fmt.Printf("Vertical blockers: %v\n", verticalBlockers)
+	// fmt.Printf("Horizontal blockers: %v\n", horizontalBlockers)
 }
 
-func getNextPosition(guardPosition Coordinate, direction int) Coordinate {
+func getNextPosition(guardPosition CoordinateWithDirection, direction int) CoordinateWithDirection {
 	switch direction {
 	case Up:
-		return Coordinate{
-			X: guardPosition.X,
-			Y: guardPosition.Y - 1,
+		return CoordinateWithDirection{
+			Coordinate: Coordinate{
+				X: guardPosition.X,
+				Y: guardPosition.Y - 1,
+			},
+			Direction: Up,
 		}
 	case Down:
-		return Coordinate{
-			X: guardPosition.X,
-			Y: guardPosition.Y + 1,
+		return CoordinateWithDirection{
+			Coordinate: Coordinate{
+				X: guardPosition.X,
+				Y: guardPosition.Y + 1,
+			},
+			Direction: Down,
 		}
 	case Left:
-		return Coordinate{
-			X: guardPosition.X - 1,
-			Y: guardPosition.Y,
+		return CoordinateWithDirection{
+			Coordinate: Coordinate{
+				X: guardPosition.X - 1,
+				Y: guardPosition.Y,
+			},
+			Direction: Left,
 		}
 	case Right:
-		return Coordinate{
-			X: guardPosition.X + 1,
-			Y: guardPosition.Y,
+		return CoordinateWithDirection{
+			Coordinate: Coordinate{
+				X: guardPosition.X + 1,
+				Y: guardPosition.Y,
+			},
+			Direction: Right,
 		}
 	}
 
@@ -298,7 +298,7 @@ func getNextDirection(currectDirection int) int {
 	panic("direction not known")
 }
 
-func isBlocked(position Coordinate, grid *[][]rune) bool {
+func isBlocked(position CoordinateWithDirection, grid *[][]rune) bool {
 	r := (*grid)[position.Y][position.X]
 	if r != '.' && r != 'X' && r != '^' {
 		return true
@@ -307,18 +307,21 @@ func isBlocked(position Coordinate, grid *[][]rune) bool {
 	return false
 }
 
-func inGrid(coord Coordinate, grid *[][]rune) bool {
+func inGrid(coord CoordinateWithDirection, grid *[][]rune) bool {
 	inGrid := coord.X >= 0 && coord.X < len((*grid)[0]) && coord.Y >= 0 && coord.Y < len(*grid)
 	return inGrid
 }
 
-func findGuardPosition(grid *[][]rune) *Coordinate {
+func findGuardPosition(grid *[][]rune) *CoordinateWithDirection {
 	for y, row := range *grid {
 		for x, rune := range row {
 			if rune == '^' {
-				return &Coordinate{
-					X: x,
-					Y: y,
+				return &CoordinateWithDirection{
+					Coordinate: Coordinate{
+						X: x,
+						Y: y,
+					},
+					Direction: Up,
 				}
 			}
 		}
@@ -330,6 +333,11 @@ func findGuardPosition(grid *[][]rune) *Coordinate {
 type Coordinate struct {
 	X int
 	Y int
+}
+
+type CoordinateWithDirection struct {
+	Coordinate
+	Direction int
 }
 
 func printGrid(runeGrid *[][]rune) {
@@ -393,188 +401,4 @@ func logln(format string) {
 	if shouldLog {
 		fmt.Println(format)
 	}
-}
-
-// NOT MY SOLUTION
-
-func other() {
-	input := aoc.Get2DGrid(aoc.ReadFileLineByLine("../input.txt"))
-	ans1, path := findPath(input, findStartingPoint(input))
-	ans2 := findNewObstacleCount(input, findStartingPoint(input), path)
-
-	fmt.Println("answer for part 1: ", ans1)
-	fmt.Println("answer for part 2: ", ans2)
-	fmt.Println("points: ", points)
-}
-
-func findStartingPoint(input [][]string) point {
-	for i, row := range input {
-		for j, char := range row {
-			switch char {
-			case "^":
-				return point{j, i, up}
-			case "<":
-				return point{j, i, left}
-
-			case ">":
-				return point{j, i, right}
-
-			case "v":
-				return point{j, i, down}
-
-			}
-		}
-	}
-	return point{-1, -1, up}
-}
-
-type point struct {
-	x         int
-	y         int
-	direction int
-}
-
-type coordinates struct {
-	x int
-	y int
-}
-
-const (
-	up    = 0
-	down  = 1
-	right = 2
-	left  = 3
-)
-
-func findPath(input [][]string, start point) (int, map[coordinates]int) {
-	path := make(map[coordinates]int)
-	count := 0
-	current := start
-	for {
-		if _, ok := path[coordinates{current.x, current.y}]; !ok {
-			count++
-			path[coordinates{current.x, current.y}] = current.direction
-		}
-
-		isValid, newCurrent := findNextStep(input, current)
-		if !isValid {
-			return count, path
-		}
-
-		current = newCurrent
-	}
-	return count, path
-}
-
-// main thing to note: we enounter a loop whenever we come
-// across the same coordinates + direction.
-func isLoop(input [][]string, start point) bool {
-	path := make(map[point]struct{})
-	path2 := make(map[coordinates]struct{})
-	current := start
-	for {
-		// update path
-		if _, ok := path[current]; !ok {
-			path[current] = struct{}{}
-		} else {
-			return true
-		}
-
-		if _, ok := path2[coordinates{current.x, current.y}]; !ok {
-			path2[coordinates{current.x, current.y}] = struct{}{}
-		}
-
-		valid, newCurrent := findNextStep(input, current)
-		if !valid {
-			return false
-		}
-
-		current = newCurrent
-	}
-	return false
-}
-
-func findNextStep(input [][]string, current point) (bool, point) {
-	valid, possibleNext := getNextStepWithDirectionPreserved(input, current)
-	if !valid {
-		return false, possibleNext
-	}
-
-	switch input[possibleNext.y][possibleNext.x] {
-	case "#":
-		// this is really subtle, consider the below case
-		// where > represents your current position + direction:
-		// ....#.....
-		// ........>#
-		// ........#.
-		// When you turn right and step, you again encounter
-		// an obstacle (a '#'). This is a valid case and you
-		// can not exit the loop at this point.
-		// Instead, you turn right once MORE, an effective turn of
-		// 180 degrees this time, and then continue forward.
-		return findNextStep(input, turn90(input, current))
-	case ".":
-		return true, possibleNext
-	case "^":
-		return true, possibleNext
-	}
-	return false, possibleNext
-}
-
-// for the guard to be stuck in a loop, the new obstacle has to
-// be placed on the guard's existing path (ie path figured out
-// in the first part).
-// obstacle placed at any other place will not change the guard's path.
-func findNewObstacleCount(input [][]string, start point, path map[coordinates]int) int {
-	count := 0
-	obstanceMap := make(map[coordinates]struct{})
-	for step, _ := range path {
-		if step.x == start.x && step.y == start.y {
-			continue
-		}
-		if input[step.y][step.x] == "." {
-
-			input[step.y][step.x] = "#"
-			if isLoop(input, start) {
-				if _, ok := obstanceMap[step]; !ok {
-					count++
-					points = append(points, Coordinate{X: step.x, Y: step.y})
-					obstanceMap[step] = struct{}{}
-				}
-			}
-			input[step.y][step.x] = "."
-		}
-	}
-	return count
-}
-
-func getNextStepWithDirectionPreserved(input [][]string, current point) (bool, point) {
-	switch current.direction {
-	case up:
-		current.y -= 1
-	case down:
-		current.y += 1
-	case right:
-		current.x += 1
-	case left:
-		current.x -= 1
-	}
-	if current.x < 0 || current.y < 0 || current.x >= len(input[0]) || current.y >= len(input) {
-		return false, current
-	}
-	return true, current
-}
-
-func turn90(input [][]string, current point) point {
-	switch current.direction {
-	case up:
-		current.direction = right
-	case down:
-		current.direction = left
-	case right:
-		current.direction = down
-	case left:
-		current.direction = up
-	}
-	return current
 }
