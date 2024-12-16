@@ -26,8 +26,6 @@ var potentialLoop = []Coordinate{}
 var blockersCausingInfiniteLoop = []CoordinateWithDirection{}
 var checkedBlockers = []Coordinate{}
 
-var points = []Coordinate{}
-
 func main() {
 	startTime := time.Now()
 	// grid, err := readFile("../test.txt")
@@ -49,11 +47,17 @@ func main() {
 	printInfiniteBlockers(grid, blockersCausingInfiniteLoop)
 	printGrid(grid)
 
+	sort.Slice(blockersCausingInfiniteLoop, func(i, j int) bool {
+		if blockersCausingInfiniteLoop[i].X == blockersCausingInfiniteLoop[j].X {
+			return blockersCausingInfiniteLoop[i].Y < blockersCausingInfiniteLoop[j].Y
+		}
+		return blockersCausingInfiniteLoop[i].X < blockersCausingInfiniteLoop[j].X
+	})
 	fmt.Printf("blocks causing infinte loop: %v\n", blockersCausingInfiniteLoop)
 	fmt.Printf("blocks count causing infinte loop: %v\n", len(blockersCausingInfiniteLoop))
 
 	fmt.Printf("total spaces visited: %d\n\n", total)
-	fmt.Printf("executed in %d microseconds\n", endTime.Microseconds())
+	fmt.Printf("executed in %d milliseconds\n", endTime.Milliseconds())
 }
 
 func printInfiniteBlockers(grid *[][]rune, blockers []CoordinateWithDirection) {
@@ -68,20 +72,27 @@ func walk(guardPosition CoordinateWithDirection, direction int, grid *[][]rune, 
 	}
 	(*grid)[guardPosition.Y][guardPosition.X] = 'X'
 
+	c := Coordinate{
+		X: 4,
+		Y: 1,
+	}
+
 	nextPosition := getNextPosition(guardPosition, direction)
+	if guardPosition.Coordinate == c {
+		fmt.Printf("first: at 4, 1, next position: %v, dirtection: %d\n", nextPosition, direction)
+	}
 	if inGrid(nextPosition, grid) == false {
+		if guardPosition.Coordinate == c {
+			fmt.Println("Out of grid")
+		}
 		return
 	}
 
+	if nextPosition.Coordinate == c {
+		fmt.Println("turning on logging")
+		shouldLog = true
+	}
 	if isBlocked(nextPosition, grid) == false {
-		c := Coordinate{
-			X: 4,
-			Y: 3,
-		}
-
-		if nextPosition.Coordinate == c {
-			shouldLog = true
-		}
 		logf("blockers: %v\n", blockers)
 
 		if (*grid)[nextPosition.Y][nextPosition.X] != 'X' && contains(checkedBlockers, nextPosition.Coordinate) == false {
@@ -94,8 +105,24 @@ func walk(guardPosition CoordinateWithDirection, direction int, grid *[][]rune, 
 		walk(nextPosition, direction, grid, loopBlockers)
 	} else {
 		direction = getNextDirection(direction)
-		nextPosition = getNextPosition(guardPosition, direction)
-		walk(nextPosition, direction, grid, loopBlockers)
+		newNextPosition := getNextPosition(guardPosition, direction)
+		if isBlocked(newNextPosition, grid) {
+			direction = getNextDirection(direction)
+			newNextPosition = getNextPosition(guardPosition, direction)
+		}
+		if (*grid)[newNextPosition.Y][newNextPosition.X] != 'X' && contains(checkedBlockers, nextPosition.Coordinate) == false {
+			if isStuckInLoop(direction, newNextPosition, newNextPosition, &[]CoordinateWithDirection{}) {
+				blockersCausingInfiniteLoop = append(blockersCausingInfiniteLoop, newNextPosition)
+			}
+		}
+		if newNextPosition.Coordinate == c {
+			fmt.Println("turning on logging")
+			shouldLog = true
+		}
+		if guardPosition.Coordinate == c {
+			fmt.Printf("blocked: at 12, 15, next position: %v, dirtection: %d\n", nextPosition, direction)
+		}
+		walk(newNextPosition, direction, grid, loopBlockers)
 	}
 }
 
@@ -107,22 +134,22 @@ func isStuckInLoop(currentDirection int, initialBlockerCoord, blockerCoord Coord
 	if blockerCoord != initialBlockerCoord {
 		switch newDirection {
 		case Up:
-			if blockerCoord.X+1 == initialBlockerCoord.X && blockerCoord.Y > initialBlockerCoord.Y {
+			if newDirection == initialBlockerCoord.Direction && blockerCoord.X+1 == initialBlockerCoord.X && blockerCoord.Y > initialBlockerCoord.Y {
 				logln("Hit inital blocker, found inifinte loop")
 				return true
 			}
 		case Down:
-			if blockerCoord.X-1 == initialBlockerCoord.X && blockerCoord.Y < initialBlockerCoord.Y {
+			if newDirection == initialBlockerCoord.Direction && blockerCoord.X-1 == initialBlockerCoord.X && blockerCoord.Y < initialBlockerCoord.Y {
 				logln("Hit inital blocker, found inifinte loop")
 				return true
 			}
 		case Right:
-			if blockerCoord.Y+1 == initialBlockerCoord.Y && blockerCoord.X < initialBlockerCoord.X {
+			if newDirection == initialBlockerCoord.Direction && blockerCoord.Y+1 == initialBlockerCoord.Y && blockerCoord.X < initialBlockerCoord.X {
 				logln("Hit inital blocker, found inifinte loop")
 				return true
 			}
 		case Left:
-			if blockerCoord.Y-1 == initialBlockerCoord.Y && blockerCoord.X > initialBlockerCoord.X {
+			if newDirection == initialBlockerCoord.Direction && blockerCoord.Y-1 == initialBlockerCoord.Y && blockerCoord.X > initialBlockerCoord.X {
 				logln("Hit inital blocker, found inifinte loop")
 				return true
 			}

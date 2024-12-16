@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
 	aoc "github.com/shraddhaag/aoc/library"
 )
@@ -20,6 +21,13 @@ func main() {
 
 	fmt.Println("answer for part 1: ", ans1)
 	fmt.Println("answer for part 2: ", ans2)
+
+	sort.Slice(points, func(i, j int) bool {
+		if points[i].X == points[j].X {
+			return points[i].Y < points[j].Y
+		}
+		return points[i].X < points[j].X
+	})
 	fmt.Println("points: ", points)
 }
 
@@ -154,7 +162,7 @@ func findNewObstacleCount(input [][]string, start point, path map[coordinates]in
 			if isLoop(input, start) {
 				if _, ok := obstanceMap[step]; !ok {
 					count++
-					points = append(points, Coordinate{X: start.x, Y: start.y})
+					points = append(points, Coordinate{X: step.x, Y: step.y})
 					obstanceMap[step] = struct{}{}
 				}
 			}

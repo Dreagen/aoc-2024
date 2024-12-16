@@ -20,8 +20,8 @@ var visit = 0
 
 func main() {
 	startTime := time.Now()
-	// grid, err := readFile("../test.txt")
-	grid, err := readFile("../input.txt")
+	grid, err := readFile("../test.txt")
+	// grid, err := readFile("../input.txt")
 	if err != nil {
 		fmt.Printf("Error reading input: %s", err.Error())
 		os.Exit(1)
